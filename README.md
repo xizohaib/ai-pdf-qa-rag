@@ -1,31 +1,51 @@
-# AI PDF Q&A — Phase 5: Advanced RAG
+# AI PDF Question-Answering System — Advanced RAG
 
-Phase 5 builds on the Phase 4 custom Python RAG app. It adds:
+An AI-powered PDF Question-Answering System that extracts information from PDF documents, retrieves relevant passages using hybrid search, and generates evidence-grounded answers with a locally running Large Language Model (LLM).
 
-- **Hybrid retrieval:** TF-IDF keyword retrieval + MiniLM semantic retrieval.
-- **Reciprocal-rank fusion (RRF):** combines both rankings without assuming raw scores share the same scale.
-- **Optional cross-encoder reranking:** reorders a small candidate set for relevance. It is off by default because it downloads another model and uses additional memory.
-- **Citation format checks:** flags unknown source IDs and source/page mismatches. This does not prove that a claim is factually supported.
-- **Retrieval evaluation:** upload labeled questions and relevant PDF page numbers; calculate Hit@K, Mean Reciprocal Rank (MRR), and retrieval time.
-- **Grounded prompting and abstention:** the model is instructed to answer only from the supplied evidence and abstain when evidence is insufficient.
-- **Evidence display:** keyword, semantic, fusion, and optional reranking scores are shown alongside source passages.
+## Features
 
-The app is designed for local use with Ollama and does not require a paid LLM API.
+**Complete project journey:** PDF text extraction and chunking, TF-IDF retrieval, semantic search with Sentence Transformers, extractive question answering, local LLM-powered RAG, hybrid retrieval with Reciprocal Rank Fusion (RRF), optional cross-encoder reranking, citation-format validation, and retrieval evaluation.
 
-## 1. Requirements
+- **Hybrid retrieval:** Combines keyword-based TF-IDF search with semantic embeddings.
+- **Reciprocal Rank Fusion:** Combines retrieval rankings without directly comparing incompatible raw scores.
+- **Optional reranking:** Uses a cross-encoder to improve the ordering of retrieved passages.
+- **Grounded answer generation:** Uses Ollama to generate answers based on retrieved PDF evidence.
+- **Source references:** Displays retrieved passages, PDF page numbers, and citation-format checks.
+- **Abstention handling:** Instructs the model to acknowledge when the available evidence is insufficient.
+- **Retrieval evaluation:** Measures Hit@K, Mean Reciprocal Rank (MRR), and retrieval time using labeled questions.
+- **Interactive interface:** Built with Streamlit for document upload, question answering, evidence inspection, and evaluation.
+
+## Technology Stack
+
+- **Language:** Python
+- **Interface:** Streamlit
+- **PDF processing:** PyMuPDF
+- **Keyword retrieval:** scikit-learn TF-IDF
+- **Semantic search:** Sentence Transformers (`all-MiniLM-L6-v2`)
+- **Reranking:** Cross-Encoder (`ms-marco-MiniLM-L-6-v2`)
+- **LLM inference:** Ollama
+- **Default LLM:** `qwen2.5:3b`
+- **Data analysis:** Pandas and NumPy
+
+## Requirements
 
 - Windows 10/11
-- Python 3.10 or newer (Python 3.11 is a sensible choice)
-- Ollama installed and running
-- At least one Ollama model, e.g. `qwen2.5:3b`
+- Python 3.10 or newer
+- Ollama installed
+- An Ollama model downloaded locally
 
-## 2. Open the folder
+## Installation
 
-Extract `AI_PDF_QA_Phase5.zip`, open the `AI_PDF_QA_Phase5` folder in VS Code, and open a terminal in that folder.
+### 1. Clone the repository
 
-Keep Phase 4 as a separate backup. Do not overwrite your working Phase 4 folder.
+```bash
+git clone https://github.com/xizohaib/ai-pdf-qa-rag.git
+cd ai-pdf-qa-rag
+```
 
-## 3. Create and activate a virtual environment (CMD)
+### 2. Create a virtual environment
+
+On Windows Command Prompt:
 
 ```bat
 python -m venv .venv
@@ -34,52 +54,39 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-If you use PowerShell instead:
+### 3. Prepare Ollama
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+Install Ollama from [ollama.com](https://ollama.com/), then run:
 
-If activation is blocked or the `streamlit` command is not recognized, try:
-
-```bat
-python -m streamlit run app.py
-```
-
-## 4. Prepare Ollama
-
-In a separate terminal:
-
-```bat
+```bash
 ollama pull qwen2.5:3b
 ollama list
 ```
 
-Make sure Ollama is running. The app sends requests to `http://localhost:11434` by default.
+Ensure Ollama is running before asking questions in the application.
 
-## 5. Run the app
+### 4. Run the application
 
-From the Phase 5 project folder, with `.venv` active:
-
-```bat
+```bash
 python -m streamlit run app.py
 ```
 
-Streamlit prints a local URL, usually `http://localhost:8501`.
+Open the local URL displayed in the terminal, usually `http://localhost:8501`.
 
-## 6. Ask questions
+## Usage
 
 1. Upload a selectable-text PDF.
-2. Ask a question.
-3. Hybrid retrieval combines keyword and semantic rankings.
-4. Optionally enable cross-encoder reranking. The first use downloads the reranker model.
-5. Inspect the answer, citation-format warning (if any), and evidence passages.
+2. Enter a question about the document.
+3. Review the generated answer and its source references.
+4. Inspect retrieved passages and their retrieval scores.
+5. Optionally enable cross-encoder reranking.
+6. Upload a labeled evaluation CSV to assess retrieval performance.
 
 Scanned PDFs without selectable text are not supported because OCR is not included.
 
-## 7. Evaluate retrieval
+## Retrieval Evaluation
 
-Prepare a CSV with two required columns:
+The evaluation CSV must contain these columns:
 
 ```csv
 question,expected_pages
@@ -87,34 +94,44 @@ question,expected_pages
 "Which method was used?","2"
 ```
 
-Use page numbers from the PDF itself. If more than one page can answer the question, separate page numbers with semicolons.
+Use actual PDF page numbers and separate multiple relevant pages with semicolons.
 
-In the **Evaluate retrieval** tab:
-1. Download the CSV template or create your own.
-2. Upload the CSV.
-3. Select top-K and run evaluation.
-4. Review/download the per-question results.
+**Metrics:**
 
-Metrics:
-- **Hit@K:** proportion of labeled questions for which at least one expected page appears among the top K retrieved passages.
-- **MRR:** reciprocal rank of the first retrieved passage on an expected page, averaged across labeled questions. Higher means relevant evidence tends to appear earlier.
-- **Average retrieval time:** time to retrieve the evidence for one question; it excludes LLM generation.
+- **Hit@K:** Percentage of questions for which at least one expected page appears among the top K retrieved passages.
+- **Mean Reciprocal Rank (MRR):** Measures how highly the first relevant result ranks.
+- **Average retrieval time:** Measures retrieval latency, excluding LLM generation.
 
-For a fair comparison, keep the PDF, chunk settings, test questions, and expected page labels unchanged when changing retrieval settings.
+For a fair comparison, keep the PDF, chunk settings, test questions, and expected page labels consistent.
 
-## 8. Notes and limitations
+## Example Evaluation Results
+
+An initial evaluation on an Operating Systems notes PDF produced the following results:
+
+| Metric                 |        Result |
+| ---------------------- | ------------: |
+| Hit@5                  |         93.3% |
+| Mean Reciprocal Rank   |         0.822 |
+| Average retrieval time | 0.049 seconds |
+
+These results apply to the current labeled test set. They measure retrieval performance, not overall answer accuracy or factual correctness.
+
+## Limitations
 
 - Retrieval scores are ranking signals, not probabilities of correctness.
-- The citation checker validates citation IDs/page numbers against retrieved sources. It does not prove that each claim is entailed by its cited text.
-- Evaluation is only as reliable as your labeled expected pages. A page can be relevant even if it is not listed; include all acceptable pages when possible.
-- Cross-encoder reranking can improve ordering, but may be slow or memory-intensive on CPU. Keep it disabled if your laptop struggles.
-- MiniLM model files download on first use and are then cached by the local Python environment.
-- PDF text stays local in this pipeline. Ollama is called through its local HTTP endpoint.
+- Citation checks identify certain source-ID and page-number mismatches but do not prove that a citation supports a claim.
+- Evaluation quality depends on accurate expected-page labels and representative test questions.
+- Cross-encoder reranking can increase latency and memory usage.
+- The first use of embedding and reranking models may require downloading model files.
+- Scanned PDFs require OCR support, which is not currently included.
+- The application runs locally and requires Ollama; it is not a hosted web service.
 
-## 9. Suggested experiment
+## Future Improvements
 
-Run the same labeled question CSV twice:
-1. Hybrid retrieval with reranking disabled.
-2. Hybrid retrieval with reranking enabled.
+Potential extensions include multi-PDF question answering, OCR for scanned documents, conversation history, MCQ answer-accuracy evaluation, and deployment.
 
-Compare Hit@K, MRR, and retrieval latency. Keep the option that gives a useful quality improvement for its extra cost.
+---
+
+**Author:** Zohaib Ahmed
+
+**GitHub:** https://github.com/xizohaib/ai-pdf-qa-rag
